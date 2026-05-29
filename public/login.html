@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Regomax Despachos</title>
+
+    <!-- PWA -->
+    <link rel="manifest" href="/manifest.json">
+
+    <meta name="theme-color" content="#0d6efd">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Regomax Despachos">
+
+    <link rel="apple-touch-icon" href="/assets/img/regomax.png">
+
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+    <style>
+        body {
+            background-color: #f8f9fa;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+
+        .login-container {
+            max-width: 400px;
+            width: 100%;
+        }
+
+        .logo-container {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .logo-container img {
+            max-height: 80px;
+            background-color: white;
+            padding: 10px;
+            border-radius: 5px;
+        }
+
+        .company-name {
+            color: #0d6efd;
+            font-size: 1.8rem;
+            font-weight: bold;
+            margin-top: 1rem;
+        }
+
+        .company-subtitle {
+            color: #6c757d;
+            font-size: 0.95rem;
+        }
+
+        .login-card {
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            background-color: white;
+        }
+
+        .was-validated .form-control:valid {
+            border-color: #ced4da;
+            background-image: none;
+        }
+
+        .was-validated .form-control:valid:focus {
+            border-color: #86b7fe;
+            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+        }
+
+        .btn-primary {
+            padding: 12px;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container login-container">
+
+    <div class="logo-container">
+        <img src="/assets/img/regomax.png" alt="Regomax Logo">
+
+        <div class="company-name">
+            Regomax S.A.
+        </div>
+
+        <div class="company-subtitle">
+            Sistema de Despachos
+        </div>
+    </div>
+
+    <div class="card login-card">
+        <div class="card-body p-4">
+
+            <h4 class="card-title text-center mb-4">
+                Iniciar Sesión
+            </h4>
+
+            <!-- Error -->
+            <div id="errorMessage" class="alert alert-danger d-none">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                <span></span>
+            </div>
+
+            <!-- Success -->
+            <div id="successMessage" class="alert alert-success d-none">
+                <i class="bi bi-check-circle-fill me-2"></i>
+                <span></span>
+            </div>
+
+            <form id="loginForm" class="needs-validation" novalidate>
+
+                <div class="mb-3">
+                    <label for="username" class="form-label">
+                        <i class="bi bi-person-fill me-2"></i>
+                        Usuario
+                    </label>
+
+                    <input
+                        type="text"
+                        class="form-control"
+                        id="username"
+                        placeholder="Ingrese su usuario"
+                        autocomplete="username"
+                        required
+                    >
+
+                    <div class="invalid-feedback">
+                        Por favor ingrese su usuario.
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="password" class="form-label">
+                        <i class="bi bi-key-fill me-2"></i>
+                        Contraseña
+                    </label>
+
+                    <input
+                        type="password"
+                        class="form-control"
+                        id="password"
+                        placeholder="Ingrese su contraseña"
+                        autocomplete="current-password"
+                        required
+                    >
+
+                    <div class="invalid-feedback">
+                        Por favor ingrese su contraseña.
+                    </div>
+                </div>
+
+                <div class="d-grid gap-2 mt-4">
+                    <button
+                        type="submit"
+                        class="btn btn-primary"
+                        id="loginButton"
+                    >
+                        <i class="bi bi-box-arrow-in-right me-2"></i>
+                        Iniciar Sesión
+                    </button>
+                </div>
+
+            </form>
+
+        </div>
+    </div>
+
+</div>
+
+<!-- Bootstrap -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- jQuery -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<!-- Login JS -->
+<script src="/assets/js/login.js"></script>
+
+<!-- Service Worker -->
+<script>
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker
+            .register('/service-worker.js')
+            .then(reg => {
+                console.log('Service Worker registrado', reg);
+            })
+            .catch(err => {
+                console.error('Error registrando Service Worker', err);
+            });
+    });
+}
+</script>
+
+</body>
+</html>
+
