@@ -7,6 +7,8 @@ let bolsonesEscaneadosPorOrden = {};
 let scannerStream = null;
 let scannerInterval = null;
 let html5QRScanner = null; // Scanner instance from html5-qrcode
+let lastScannedCode = null; // Último código escaneado
+let lastScannedTime = 0; // Timestamp del último escaneo
 
 /**
  * Reproduce un sonido de beep cuando se detecta un código
@@ -603,6 +605,21 @@ async function abrirEscanerQRDetalle() {
  */
 function onScanSuccessDetalle(decodedText, decodedResult) {
     console.log('✅ Código detectado:', decodedText);
+    
+    // Evitar escanear el mismo código dos veces muy rápido
+    // Esperar 1.5 segundos antes de procesar el mismo código
+    const currentTime = Date.now();
+    const timeSinceLastScan = currentTime - lastScannedTime;
+    
+    if (decodedText === lastScannedCode && timeSinceLastScan < 1500) {
+        console.log('⏱️ Mismo código detectado muy rápido, ignorando...');
+        return;
+    }
+    
+    // Actualizar el último código y tiempo escaneados
+    lastScannedCode = decodedText;
+    lastScannedTime = currentTime;
+    
     procesarCodigoEscaneadoDetalle(decodedText);
 }
 
@@ -620,8 +637,16 @@ function onScanErrorDetalle(error) {
 function procesarCodigoEscaneadoDetalle(codigo) {
     console.log('✅ Código detectado:', codigo);
 
-    // Reproducir sonido de escaneo
-    beep();
+    const codigoEscaneado = String(codigo).trim();
+    const bolsonesHash = obtenerBolsonesHashOrden();
+
+    // Verificar si el código ya está en la lista (duplicado)
+    const esCodigoDuplicado = bolsonesHash[codigoEscaneado] || bolsonesEscaneados.some(b => obtenerCodigoBolson(b) === codigoEscaneado);
+
+    // Solo hacer beep si es un código nuevo (no duplicado)
+    if (!esCodigoDuplicado) {
+        beep();
+    }
 
     // Poner el código en el input
     document.getElementById('codigoBolson').value = codigo;
@@ -631,12 +656,24 @@ function procesarCodigoEscaneadoDetalle(codigo) {
 
     // Mostrar confirmación temporal (el código fue procesado)
     const displayEl = document.getElementById('scannedCodeDisplayDetalle');
-    displayEl.innerHTML = `
-        <div class="scanned-code" style="background-color: #d4edda; color: #155724; padding: 10px; border-radius: 4px; margin-top: 10px;">
-            <i class="bi bi-check-circle me-2"></i><strong>✅ ${codigo}</strong> agregado<br>
-            <small>Escanea otro código...</small>
-        </div>
-    `;
+    
+    if (esCodigoDuplicado) {
+        // Mostrar advertencia si es duplicado
+        displayEl.innerHTML = `
+            <div class="scanned-code" style="background-color: #f8d7da; color: #721c24; padding: 10px; border-radius: 4px; margin-top: 10px;">
+                <i class="bi bi-exclamation-triangle me-2"></i><strong>⚠️ ${codigo}</strong> ya fue agregado<br>
+                <small>Escanea otro código...</small>
+            </div>
+        `;
+    } else {
+        // Mostrar confirmación verde si es nuevo
+        displayEl.innerHTML = `
+            <div class="scanned-code" style="background-color: #d4edda; color: #155724; padding: 10px; border-radius: 4px; margin-top: 10px;">
+                <i class="bi bi-check-circle me-2"></i><strong>✅ ${codigo}</strong> agregado<br>
+                <small>Escanea otro código...</small>
+            </div>
+        `;
+    }
 
     // Limpiar el input para el siguiente código
     setTimeout(() => {
@@ -652,6 +689,10 @@ function procesarCodigoEscaneadoDetalle(codigo) {
  * Cierra el escáner y detiene la cámara en detalle-orden
  */
 function cerrarEscanerDetalle() {
+    // Resetear variables de control de duplicados
+    lastScannedCode = null;
+    lastScannedTime = 0;
+    
     // Detener el scanner de html5-qrcode
     if (html5QRScanner) {
         html5QRScanner.stop().then(() => {
