@@ -6,9 +6,11 @@ function iniciarEscaneoDetalle() {
     const video = document.getElementById('scannerVideoDetalle');
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
+    const statusEl = document.getElementById('scannerStatusDetalle');
 
     let lastCode = null;
     let lastTime = 0;
+    let frameCount = 0;
 
     scannerInterval = setInterval(() => {
         if (!video?.srcObject || !scannerStream) {
@@ -27,6 +29,7 @@ function iniciarEscaneoDetalle() {
             
             // Intenta QR primero (jsQR)
             let code = jsQR(imageData.data, canvas.width, canvas.height, { inversionAttempts: 'dontInvert' });
+            let tipoDetectado = 'QR';
             
             if (!code) {
                 // Si no hay QR, intenta código de barras (ZXing)
@@ -36,6 +39,7 @@ function iniciarEscaneoDetalle() {
                     const reader = new ZXing.MultiFormatReader();
                     const result = reader.decode(binaryBitmap);
                     code = { data: result.getText() };
+                    tipoDetectado = 'Código de Barras';
                 } catch (e) {
                     // Sin código detectado
                 }
@@ -45,11 +49,58 @@ function iniciarEscaneoDetalle() {
                 if (code.data !== lastCode || Date.now() - lastTime > 1500) {
                     lastCode = code.data;
                     lastTime = Date.now();
-                    procesarCodigoEscaneadoDetalle(code.data);
+                    
+                    // Mostrar feedback visual
+                    statusEl.className = 'scanner-status detected';
+                    statusEl.innerHTML = `
+                        <i class="bi bi-check-circle me-2"></i>
+                        ✅ ${tipoDetectado} detectado: <strong>${code.data}</strong>
+                    `;
+                    
+                    // Reproducir sonido
+                    reproducirSonidoExito();
+                    
+                    // Procesar después de un pequeño delay
+                    setTimeout(() => procesarCodigoEscaneadoDetalle(code.data), 300);
+                }
+            } else {
+                // Mostrar feedback cada 10 frames
+                frameCount++;
+                if (frameCount % 10 === 0) {
+                    statusEl.innerHTML = `
+                        <i class="bi bi-hourglass-split me-2"></i>
+                        Buscando... apunta el código hacia la cámara
+                    `;
                 }
             }
         } catch (e) {
             // Error normal de escaneo
         }
-    }, 200);
+    }, 150);
+}
+
+/**
+ * Reproducer sonido de éxito cuando detecta código
+ */
+function reproducirSonidoExito() {
+    // Crear un sonido simple con Web Audio API
+    try {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        oscillator.frequency.value = 800;
+        oscillator.type = 'sine';
+        
+        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+        
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.1);
+    } catch (e) {
+        // Si falla el audio, no importa
+    }
 }
