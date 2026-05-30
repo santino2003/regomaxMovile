@@ -6,6 +6,7 @@ let totalPeso = 0;
 let bolsonesEscaneadosPorOrden = {};
 let scannerStream = null;
 let scannerInterval = null;
+let html5QRScanner = null; // Scanner instance from html5-qrcode
 
 // Inicializar cuando carga la página
 document.addEventListener('DOMContentLoaded', () => {
@@ -510,51 +511,57 @@ async function abrirEscanerQRDetalle() {
     modal.show();
 
     try {
-        // Verificar si el navegador soporta mediaDevices
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-            throw new Error('Tu navegador no soporta acceso a la cámara. Usa un navegador moderno como Chrome, Safari o Firefox.');
+        // Verificar si el navegador soporta html5-qrcode
+        if (typeof Html5Qrcode === 'undefined') {
+            throw new Error('html5-qrcode library not loaded');
         }
 
-        // Solicitar acceso a la cámara
-        scannerStream = await navigator.mediaDevices.getUserMedia({
-            video: { 
-                facingMode: 'environment',
-                width: { ideal: 1280 },
-                height: { ideal: 720 }
-            }
-        });
+        // Inicializar el scanner
+        html5QRScanner = new Html5Qrcode("reader");
 
-        const video = document.getElementById('scannerVideoDetalle');
-        video.srcObject = scannerStream;
-        
-        // Esperar a que el video esté listo
-        video.onloadedmetadata = () => {
-            video.play().then(() => {
-                iniciarEscaneoDetalle();
-            }).catch(err => {
-                console.error('Error al reproducir video:', err);
-                document.getElementById('scannerStatusDetalle').innerHTML = `
-                    <i class="bi bi-exclamation-circle me-2"></i>
-                    Error al acceder a la cámara
-                `;
-            });
-        };
+        // Configurar los formatos soportados
+        const formatsToSupport = [
+            Html5QrcodeSupportedFormats.QR_CODE,
+            Html5QrcodeSupportedFormats.CODE_128,
+            Html5QrcodeSupportedFormats.CODE_39,
+            Html5QrcodeSupportedFormats.EAN_13,
+            Html5QrcodeSupportedFormats.EAN_8,
+            Html5QrcodeSupportedFormats.UPC_A,
+            Html5QrcodeSupportedFormats.UPC_E
+        ];
+
+        // Iniciar el escaneo
+        await html5QRScanner.start(
+            { facingMode: 'environment' },
+            {
+                fps: 10,
+                qrbox: { width: 300, height: 200 },
+                formatsToSupport: formatsToSupport
+            },
+            onScanSuccessDetalle,
+            onScanErrorDetalle
+        );
+
+        // Actualizar estado
+        document.getElementById('scannerStatusDetalle').className = 'scanner-status scanning';
+        document.getElementById('scannerStatusDetalle').innerHTML = `
+            <i class="bi bi-hourglass-split me-2"></i>Escaneando...
+        `;
 
     } catch (error) {
-        console.error('Error al acceder a la cámara:', error);
+        console.error('Error al abrir el escáner:', error);
         
-        let mensajeError = 'Error: No se pudo acceder a la cámara.';
+        let mensajeError = 'Error: No se pudo abrir el escáner.';
         
         if (error.name === 'NotAllowedError') {
-            mensajeError = '❌ Permiso denegado. Por favor, permite el acceso a la cámara en los ajustes de tu navegador.';
+            mensajeError = '❌ Permiso denegado. Por favor, permite el acceso a la cámara.';
         } else if (error.name === 'NotFoundError') {
             mensajeError = '❌ No se encontró cámara en el dispositivo.';
         } else if (error.name === 'NotReadableError') {
             mensajeError = '❌ La cámara está siendo usada por otra aplicación.';
-        } else if (error.message.includes('soporta')) {
-            mensajeError = error.message;
         }
         
+        document.getElementById('scannerStatusDetalle').className = 'scanner-status';
         document.getElementById('scannerStatusDetalle').innerHTML = `
             <i class="bi bi-exclamation-circle me-2"></i>
             ${mensajeError}
@@ -563,58 +570,19 @@ async function abrirEscanerQRDetalle() {
 }
 
 /**
- * Inicia el escaneo de códigos QR/Códigos de barras para detalle-orden
+ * Callback cuando se detecta un código en el escáner de detalle-orden
  */
-function iniciarEscaneoDetalle() {
-    const video = document.getElementById('scannerVideoDetalle');
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
+function onScanSuccessDetalle(decodedText, decodedResult) {
+    console.log('✅ Código detectado:', decodedText);
+    procesarCodigoEscaneadoDetalle(decodedText);
+}
 
-    let lastScannedCode = null;
-    let lastScannedTime = 0;
-
-    scannerInterval = setInterval(() => {
-        if (!video || !video.srcObject || !scannerStream) {
-            clearInterval(scannerInterval);
-            return;
-        }
-
-        try {
-            // Dibujar el frame actual del video en el canvas
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            ctx.drawImage(video, 0, 0);
-
-            // Usar ZXing para decodificar el código
-            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            const luminanceSource = new ZXing.RGBLuminanceSource(imageData.data, canvas.width, canvas.height);
-            const binaryBitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(luminanceSource));
-
-            // Intentar leer el código
-            let result = null;
-            try {
-                const reader = new ZXing.MultiFormatReader();
-                result = reader.decode(binaryBitmap);
-            } catch (e) {
-                // Sin código detectado, esto es normal
-            }
-
-            // Si se detectó un código
-            if (result) {
-                const scannedText = result.getText();
-
-                // Evitar leer el mismo código múltiples veces en corto tiempo
-                if (scannedText !== lastScannedCode || Date.now() - lastScannedTime > 2000) {
-                    lastScannedCode = scannedText;
-                    lastScannedTime = Date.now();
-
-                    procesarCodigoEscaneadoDetalle(scannedText);
-                }
-            }
-        } catch (error) {
-            // Errores normales durante el escaneo
-        }
-    }, 300); // Escanear cada 300ms
+/**
+ * Callback para errores del escáner de detalle-orden
+ */
+function onScanErrorDetalle(error) {
+    // Los errores de no detección son normales, no los mostramos
+    // Solo errores graves se mostrarían aquí
 }
 
 /**
@@ -651,28 +619,25 @@ function procesarCodigoEscaneadoDetalle(codigo) {
  * Cierra el escáner y detiene la cámara en detalle-orden
  */
 function cerrarEscanerDetalle() {
-    // Detener el intervalo de escaneo
+    // Detener el scanner de html5-qrcode
+    if (html5QRScanner) {
+        html5QRScanner.stop().then(() => {
+            html5QRScanner = null;
+        }).catch(err => {
+            console.error('Error al detener el scanner:', err);
+            html5QRScanner = null;
+        });
+    }
+
+    // Detener el intervalo de escaneo (por compatibilidad)
     if (scannerInterval) {
         clearInterval(scannerInterval);
         scannerInterval = null;
     }
 
-    // Detener todos los tracks del stream de video
+    // Detener todos los tracks del stream de video (por compatibilidad)
     if (scannerStream) {
         scannerStream.getTracks().forEach(track => track.stop());
         scannerStream = null;
     }
-
-    // Limpiar el video
-    const video = document.getElementById('scannerVideoDetalle');
-    if (video) {
-        video.srcObject = null;
-    }
-
-    // Limpiar la notificación
-    document.getElementById('scannedCodeDisplayDetalle').innerHTML = '';
-    document.getElementById('scannerStatusDetalle').className = 'scanner-status scanning';
-    document.getElementById('scannerStatusDetalle').innerHTML = `
-        <i class="bi bi-hourglass-split me-2"></i>Escaneando...
-    `;
 }
