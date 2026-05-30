@@ -56,7 +56,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/umd/index.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@undecaf/zbar.wasm@0.2.3/dist/index.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
 
     <script>
         let video = null;
@@ -91,6 +91,9 @@
             let lastCode = null;
             let lastTime = 0;
 
+            // Usar Quagga para códigos de barras (más robusto en móviles)
+            let quaggaRunning = false;
+            
             interval = setInterval(() => {
                 if (!video || video.readyState !== video.HAVE_ENOUGH_DATA) return;
 
@@ -102,64 +105,44 @@
                 let code = null;
                 let tipo = '';
 
-                // 1. Intenta QR (jsQR)
+                // 1. Intenta QR (jsQR) - más rápido y confiable
                 code = jsQR(imageData.data, canvas.width, canvas.height, { inversionAttempts: 'dontInvert' });
                 if (code?.data) {
                     tipo = 'QR';
                 } 
                 
-                // 2. Intenta Código de Barras (ZXing - original)
-                if (!code) {
+                // 2. Intenta Quagga para barras
+                if (!code && !quaggaRunning) {
+                    quaggaRunning = true;
+                    
                     try {
-                        const lum = new ZXing.RGBLuminanceSource(imageData.data, canvas.width, canvas.height);
-                        const bmp = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(lum));
-                        const reader = new ZXing.MultiFormatReader();
-                        const res = reader.decode(bmp);
-                        code = { data: res.getText() };
-                        tipo = 'Código de Barras';
-                    } catch (e) {}
+                        Quagga.decodeSingle({
+                            src: canvas.toDataURL('image/jpeg'),
+                            numOfWorkers: 1,
+                            inputStream: { type: 'ImageFile' },
+                            decoder: { readers: ['code_128_reader', 'ean_reader', 'code_39_reader', 'upc_reader'] }
+                        }, (result) => {
+                            quaggaRunning = false;
+                            if (result && result.codeResult) {
+                                code = { data: result.codeResult.code };
+                                tipo = 'Código de Barras (' + result.codeResult.format + ')';
+                                
+                                if (code.data !== lastCode || Date.now() - lastTime > 2000) {
+                                    lastCode = code.data;
+                                    lastTime = Date.now();
+                                    clearInterval(interval);
+                                    detenerScanner();
+                                    mostrarResultado(code.data, tipo);
+                                }
+                            }
+                        });
+                    } catch (e) {
+                        quaggaRunning = false;
+                    }
                 }
 
-                // 3. Intenta con contraste mejorado (ZXing mejorado)
-                if (!code) {
-                    try {
-                        const imgMejorada = new ImageData(
-                            new Uint8ClampedArray(imageData.data),
-                            imageData.width,
-                            imageData.height
-                        );
-                        mejorarContrasteAgresivo(imgMejorada.data);
-                        
-                        const lum = new ZXing.RGBLuminanceSource(imgMejorada.data, canvas.width, canvas.height);
-                        const bmp = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(lum));
-                        const reader = new ZXing.MultiFormatReader();
-                        const res = reader.decode(bmp);
-                        code = { data: res.getText() };
-                        tipo = 'Código de Barras (Mejorado)';
-                    } catch (e) {}
-                }
-
-                // 4. Intenta inversión (para códigos invertidos)
-                if (!code) {
-                    try {
-                        const imgInvertida = new ImageData(
-                            new Uint8ClampedArray(imageData.data),
-                            imageData.width,
-                            imageData.height
-                        );
-                        invertirImagen(imgInvertida.data);
-                        
-                        const lum = new ZXing.RGBLuminanceSource(imgInvertida.data, canvas.width, canvas.height);
-                        const bmp = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(lum));
-                        const reader = new ZXing.MultiFormatReader();
-                        const res = reader.decode(bmp);
-                        code = { data: res.getText() };
-                        tipo = 'Código de Barras (Invertido)';
-                    } catch (e) {}
-                }
-
-                // Si detectó código
-                if (code?.data) {
+                // Si detectó QR
+                if (code?.data && tipo === 'QR') {
                     if (code.data !== lastCode || Date.now() - lastTime > 2000) {
                         lastCode = code.data;
                         lastTime = Date.now();
@@ -170,50 +153,10 @@
                 } else {
                     frameCount++;
                     if (frameCount % 10 === 0) {
-                        status.innerHTML = `<i class="bi bi-hourglass-split me-2"></i>Buscando código... (${frameCount})`;
+                        status.innerHTML = `<i class="bi bi-hourglass-split me-2"></i>Buscando QR o Código... (${frameCount})`;
                     }
                 }
-            }, 80);
-        }
-
-        function mejorarContraste(data) {
-            let min = 255, max = 0;
-            for (let i = 0; i < data.length; i += 4) {
-                const lum = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
-                if (lum < min) min = lum;
-                if (lum > max) max = lum;
-            }
-            
-            const range = max - min || 1;
-            for (let i = 0; i < data.length; i += 4) {
-                const lum = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
-                const normalized = ((lum - min) / range) * 255;
-                data[i] = normalized;
-                data[i + 1] = normalized;
-                data[i + 2] = normalized;
-            }
-        }
-
-        function mejorarContrasteAgresivo(data) {
-            // Aplicar contraste agresivo
-            for (let i = 0; i < data.length; i += 4) {
-                const r = data[i];
-                const g = data[i + 1];
-                const b = data[i + 2];
-                const lum = r * 0.299 + g * 0.587 + b * 0.114;
-                const contrast = (lum > 128) ? 255 : 0;
-                data[i] = contrast;
-                data[i + 1] = contrast;
-                data[i + 2] = contrast;
-            }
-        }
-
-        function invertirImagen(data) {
-            for (let i = 0; i < data.length; i += 4) {
-                data[i] = 255 - data[i];
-                data[i + 1] = 255 - data[i + 1];
-                data[i + 2] = 255 - data[i + 2];
-            }
+            }, 150);
         }
 
         function detenerScanner() {

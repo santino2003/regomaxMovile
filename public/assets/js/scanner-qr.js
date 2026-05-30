@@ -1,6 +1,6 @@
 /**
  * Función optimizada para escanear QR y Códigos de Barras
- * Usa jsQR para QR y ZXing para códigos de barras
+ * Usa jsQR para QR y Quagga para códigos de barras
  */
 function iniciarEscaneoDetalle() {
     const video = document.getElementById('scannerVideoDetalle');
@@ -27,19 +27,25 @@ function iniciarEscaneoDetalle() {
         try {
             const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
             
-            // Intenta QR primero (jsQR)
+            // Intenta QR primero (jsQR) - más rápido
             let code = jsQR(imageData.data, canvas.width, canvas.height, { inversionAttempts: 'dontInvert' });
             let tipoDetectado = 'QR';
             
             if (!code) {
-                // Si no hay QR, intenta código de barras (ZXing)
+                // Si no hay QR, intenta código de barras (Quagga)
                 try {
-                    const luminanceSource = new ZXing.RGBLuminanceSource(imageData.data, canvas.width, canvas.height);
-                    const binaryBitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(luminanceSource));
-                    const reader = new ZXing.MultiFormatReader();
-                    const result = reader.decode(binaryBitmap);
-                    code = { data: result.getText() };
-                    tipoDetectado = 'Código de Barras';
+                    const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+                    Quagga.decodeSingle({
+                        src: dataUrl,
+                        numOfWorkers: 0,
+                        inputStream: { type: 'ImageFile' },
+                        decoder: { readers: ['code_128_reader', 'ean_reader', 'code_39_reader', 'upc_reader'] }
+                    }, (result) => {
+                        if (result && result.codeResult) {
+                            code = { data: result.codeResult.code };
+                            tipoDetectado = 'Código de Barras';
+                        }
+                    });
                 } catch (e) {
                     // Sin código detectado
                 }
