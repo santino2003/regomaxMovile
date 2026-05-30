@@ -3,200 +3,215 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Test Scanner - Regomax</title>
+    <title>Scanner Regomax</title>
+
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
     <style>
-        body { background: #f0f0f0; }
-        .container { max-width: 600px; margin-top: 20px; }
-        #video { width: 100%; border-radius: 8px; background: #000; margin: 20px 0; }
-        .result { 
-            font-size: 24px; 
-            padding: 20px; 
-            background: #d4edda; 
-            border: 3px solid #28a745;
-            border-radius: 8px;
-            text-align: center;
-            margin: 20px 0;
+        body {
+            background: #f5f5f5;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 700px;
+        }
+
+        #reader {
+            width: 100%;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .resultado {
             display: none;
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 10px;
+            background: #d1e7dd;
+            border: 2px solid #198754;
         }
-        .result.show { display: block; animation: slideIn 0.3s; }
-        @keyframes slideIn { from { transform: translateY(-20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-        .status { 
-            padding: 15px; 
-            border-radius: 8px;
-            text-align: center;
+
+        .resultado.show {
+            display: block;
+        }
+
+        .codigo {
+            font-size: 22px;
             font-weight: bold;
+            word-break: break-all;
         }
-        .scanning { background: #cfe2ff; color: #084298; }
-        .detected { background: #d1e7dd; color: #0f5132; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1 class="mb-4">📱 Test Scanner QR/Códigos</h1>
-        
-        <button class="btn btn-primary btn-lg w-100 mb-3" onclick="iniciarScanner()">
-            <i class="bi bi-camera me-2"></i>Iniciar Escáner
+
+<div class="container">
+
+    <h2 class="mb-3">
+        Scanner Regomax
+    </h2>
+
+    <button
+        id="btnIniciar"
+        class="btn btn-primary w-100 mb-3">
+        Iniciar Scanner
+    </button>
+
+    <div id="reader"></div>
+
+    <div id="resultado" class="resultado">
+        <h4>✅ Código Detectado</h4>
+
+        <div>
+            Tipo:
+            <strong id="tipo"></strong>
+        </div>
+
+        <div class="codigo mt-2" id="codigo"></div>
+
+        <button
+            class="btn btn-success mt-3"
+            onclick="reiniciarScanner()">
+            Escanear otro
         </button>
-
-        <div id="scannerContainer" style="display: none;">
-            <video id="video" playsinline autoplay></video>
-            <div class="status scanning" id="status">
-                <i class="bi bi-hourglass-split me-2"></i>Buscando código...
-            </div>
-        </div>
-
-        <div class="result" id="result">
-            <div style="font-size: 48px; margin-bottom: 10px;">✅</div>
-            <div id="resultText"></div>
-            <button class="btn btn-primary mt-3" onclick="reiniciar()">Escanear de Nuevo</button>
-        </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/umd/index.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
+</div>
 
-    <script>
-        let video = null;
-        let stream = null;
-        let interval = null;
+<script src="https://unpkg.com/html5-qrcode"></script>
 
-        async function iniciarScanner() {
-            try {
-                video = document.getElementById('video');
-                
-                stream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: 'environment' }
-                });
+<script>
 
-                video.srcObject = stream;
-                video.play();
+let scanner = null;
 
-                document.getElementById('scannerContainer').style.display = 'block';
-                document.getElementById('result').classList.remove('show');
+function beep() {
+    try {
+        const ctx = new(window.AudioContext || window.webkitAudioContext)();
 
-                escanear();
-            } catch (err) {
-                alert('Error: ' + err.message);
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.frequency.value = 1000;
+
+        gain.gain.setValueAtTime(0.3, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(
+            0.01,
+            ctx.currentTime + 0.15
+        );
+
+        osc.start();
+        osc.stop(ctx.currentTime + 0.15);
+
+    } catch(e) {
+        console.error(e);
+    }
+}
+
+function mostrarResultado(texto, tipoCodigo) {
+
+    beep();
+
+    document.getElementById('tipo').innerText = tipoCodigo;
+    document.getElementById('codigo').innerText = texto;
+
+    document
+        .getElementById('resultado')
+        .classList.add('show');
+}
+
+async function iniciarScanner() {
+
+    document
+        .getElementById('resultado')
+        .classList.remove('show');
+
+    scanner = new Html5Qrcode("reader");
+
+    try {
+
+        await scanner.start(
+            {
+                facingMode: "environment"
+            },
+            {
+                fps: 10,
+
+                qrbox: {
+                    width: 300,
+                    height: 200
+                },
+
+                formatsToSupport: [
+
+                    Html5QrcodeSupportedFormats.QR_CODE,
+
+                    Html5QrcodeSupportedFormats.CODE_128,
+
+                    Html5QrcodeSupportedFormats.CODE_39,
+
+                    Html5QrcodeSupportedFormats.EAN_13,
+
+                    Html5QrcodeSupportedFormats.EAN_8,
+
+                    Html5QrcodeSupportedFormats.UPC_A,
+
+                    Html5QrcodeSupportedFormats.UPC_E
+
+                ]
+            },
+
+            async (decodedText, decodedResult) => {
+
+                let tipo = "Desconocido";
+
+                try {
+                    tipo =
+                        decodedResult.result.format.formatName;
+                } catch {}
+
+                await scanner.stop();
+
+                mostrarResultado(
+                    decodedText,
+                    tipo
+                );
+            },
+
+            () => {
+                // ignorar errores mientras busca
             }
-        }
+        );
 
-        function escanear() {
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            const status = document.getElementById('status');
-            let frameCount = 0;
-            let lastCode = null;
-            let lastTime = 0;
+    } catch (err) {
 
-            // Usar Quagga para códigos de barras (más robusto en móviles)
-            let quaggaRunning = false;
-            
-            interval = setInterval(() => {
-                if (!video || video.readyState !== video.HAVE_ENOUGH_DATA) return;
+        alert(
+            "Error iniciando cámara: " +
+            err.message
+        );
+    }
+}
 
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
-                ctx.drawImage(video, 0, 0);
+async function reiniciarScanner() {
 
-                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                let code = null;
-                let tipo = '';
+    document
+        .getElementById('resultado')
+        .classList.remove('show');
 
-                // 1. Intenta QR (jsQR) - más rápido y confiable
-                code = jsQR(imageData.data, canvas.width, canvas.height, { inversionAttempts: 'dontInvert' });
-                if (code?.data) {
-                    tipo = 'QR';
-                } 
-                
-                // 2. Intenta Quagga para barras
-                if (!code && !quaggaRunning) {
-                    quaggaRunning = true;
-                    
-                    try {
-                        Quagga.decodeSingle({
-                            src: canvas.toDataURL('image/jpeg'),
-                            numOfWorkers: 1,
-                            inputStream: { type: 'ImageFile' },
-                            decoder: { readers: ['code_128_reader', 'ean_reader', 'code_39_reader', 'upc_reader'] }
-                        }, (result) => {
-                            quaggaRunning = false;
-                            if (result && result.codeResult) {
-                                code = { data: result.codeResult.code };
-                                tipo = 'Código de Barras (' + result.codeResult.format + ')';
-                                
-                                if (code.data !== lastCode || Date.now() - lastTime > 2000) {
-                                    lastCode = code.data;
-                                    lastTime = Date.now();
-                                    clearInterval(interval);
-                                    detenerScanner();
-                                    mostrarResultado(code.data, tipo);
-                                }
-                            }
-                        });
-                    } catch (e) {
-                        quaggaRunning = false;
-                    }
-                }
+    await iniciarScanner();
+}
 
-                // Si detectó QR
-                if (code?.data && tipo === 'QR') {
-                    if (code.data !== lastCode || Date.now() - lastTime > 2000) {
-                        lastCode = code.data;
-                        lastTime = Date.now();
-                        clearInterval(interval);
-                        detenerScanner();
-                        mostrarResultado(code.data, tipo);
-                    }
-                } else {
-                    frameCount++;
-                    if (frameCount % 10 === 0) {
-                        status.innerHTML = `<i class="bi bi-hourglass-split me-2"></i>Buscando QR o Código... (${frameCount})`;
-                    }
-                }
-            }, 150);
-        }
+document
+    .getElementById('btnIniciar')
+    .addEventListener(
+        'click',
+        iniciarScanner
+    );
 
-        function detenerScanner() {
-            clearInterval(interval);
-            if (stream) {
-                stream.getTracks().forEach(t => t.stop());
-            }
-            document.getElementById('scannerContainer').style.display = 'none';
-        }
+</script>
 
-        function mostrarResultado(codigo, tipo) {
-            const result = document.getElementById('result');
-            const resultText = document.getElementById('resultText');
-            
-            resultText.innerHTML = `
-                <div><strong>${tipo}</strong></div>
-                <div style="font-size: 18px; word-break: break-all; margin: 10px 0;">${codigo}</div>
-            `;
-            
-            result.classList.add('show');
-
-            // Sonido
-            try {
-                const ctx = new (window.AudioContext || window.webkitAudioContext)();
-                const osc = ctx.createOscillator();
-                const gain = ctx.createGain();
-                osc.connect(gain);
-                gain.connect(ctx.destination);
-                osc.frequency.value = 1000;
-                gain.gain.setValueAtTime(0.3, ctx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
-                osc.start(ctx.currentTime);
-                osc.stop(ctx.currentTime + 0.2);
-            } catch (e) {}
-        }
-
-        function reiniciar() {
-            document.getElementById('result').classList.remove('show');
-            iniciarScanner();
-        }
-    </script>
 </body>
 </html>
