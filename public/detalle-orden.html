@@ -312,6 +312,43 @@
             animation: slideUp 0.3s ease-in-out forwards;
         }
 
+        /* Modal scrolleable */
+        .modal-dialog-lg {
+            max-width: 90vw;
+            max-height: 90vh;
+        }
+
+        .modal-content {
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .modal-body {
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            flex: 1;
+        }
+
+        /* Tabla en modal scrolleable */
+        .modal-body .table-responsive {
+            margin-bottom: 0;
+        }
+
+        .modal-body .table {
+            font-size: 0.9rem;
+        }
+
+        .modal-body .table thead th {
+            padding: 0.75rem 0.5rem;
+            font-size: 0.85rem;
+        }
+
+        .modal-body .table tbody td {
+            padding: 0.75rem 0.5rem;
+            font-size: 0.85rem;
+        }
+
         @media (max-width: 768px) {
             .menu-heading {
                 font-size: 1.1rem;
@@ -324,6 +361,10 @@
             .btn-sm {
                 padding: 0.3rem 0.5rem;
                 font-size: 0.75rem;
+            }
+
+            .modal-dialog-lg {
+                max-width: 95vw;
             }
         }
     </style>
@@ -516,7 +557,7 @@
 
     <!-- Modal: Confirmar Despacho -->
     <div class="modal fade" id="confirmarModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
             <div class="modal-content">
                 <div class="modal-header bg-primary text-white">
                     <h5 class="modal-title"><i class="bi bi-check-circle me-2"></i>Confirmar Despacho</h5>
