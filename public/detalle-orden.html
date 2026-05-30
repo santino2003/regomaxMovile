@@ -51,16 +51,21 @@
 
         .table-responsive {
             border-radius: 8px;
-            overflow: hidden;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
         }
 
         .table {
             margin-bottom: 0;
+            min-width: 100%;
         }
 
         .table thead {
             background-color: #f8f9fa;
             border-bottom: 2px solid #dee2e6;
+            position: sticky;
+            top: 0;
+            z-index: 10;
         }
 
         .table thead th {
@@ -68,6 +73,7 @@
             color: #495057;
             padding: 1rem;
             vertical-align: middle;
+            background-color: #f8f9fa;
         }
 
         .table tbody tr {
@@ -81,12 +87,13 @@
         .table tbody td {
             padding: 0.75rem 1rem;
             vertical-align: middle;
+            white-space: nowrap;
         }
 
         /* Estilo para celda de acción (botón eliminar) */
         .table tbody td:last-child {
-            white-space: nowrap;
-            min-width: 60px;
+            text-align: center;
+            padding: 0.75rem 1rem;
         }
 
         /* Asegurar que el botón sea clickeable en móviles */
@@ -97,6 +104,7 @@
             align-items: center;
             justify-content: center;
             font-size: 1rem;
+            padding: 0.5rem 0.75rem !important;
         }
 
         .form-control, .form-select {
