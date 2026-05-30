@@ -8,6 +8,35 @@ let scannerStream = null;
 let scannerInterval = null;
 let html5QRScanner = null; // Scanner instance from html5-qrcode
 
+/**
+ * Reproduce un sonido de beep cuando se detecta un código
+ */
+function beep() {
+    try {
+        const ctx = new(window.AudioContext || window.webkitAudioContext)();
+
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.frequency.value = 1000;
+
+        gain.gain.setValueAtTime(0.3, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(
+            0.01,
+            ctx.currentTime + 0.15
+        );
+
+        osc.start();
+        osc.stop(ctx.currentTime + 0.15);
+
+    } catch(e) {
+        console.error('Error al reproducir beep:', e);
+    }
+}
+
 // Inicializar cuando carga la página
 document.addEventListener('DOMContentLoaded', () => {
     // Mostrar usuario
@@ -276,9 +305,9 @@ function actualizarTablaBolsones() {
                 <td><strong>${bolson.codigo}</strong></td>
                 <td>${bolson.producto}</td>
                 <td>${parseFloat(bolson.peso).toFixed(2)} kg</td>
-                <td>
-                    <button type="button" class="btn btn-sm btn-danger" onclick="eliminarBolson(${index})">
-                        <i class="bi bi-trash"></i>
+                <td style="text-align: center;">
+                    <button type="button" class="btn btn-sm btn-danger" onclick="eliminarBolson(${index})" style="padding: 0.5rem 0.75rem;">
+                        <i class="bi bi-trash" style="font-size: 1.1rem;"></i>
                     </button>
                 </td>
             `;
@@ -591,28 +620,32 @@ function onScanErrorDetalle(error) {
 function procesarCodigoEscaneadoDetalle(codigo) {
     console.log('✅ Código detectado:', codigo);
 
-    // Actualizar estado en el modal
-    const statusEl = document.getElementById('scannerStatusDetalle');
-    statusEl.className = 'scanner-status detected';
-    statusEl.innerHTML = `
-        <i class="bi bi-check-circle me-2"></i>¡Código detectado!
-    `;
+    // Reproducir sonido de escaneo
+    beep();
 
-    // Mostrar el código escaneado
+    // Poner el código en el input
+    document.getElementById('codigoBolson').value = codigo;
+    
+    // Procesar el código (esto agregará el bolsón)
+    procesarCodigoBolson(codigo);
+
+    // Mostrar confirmación temporal (el código fue procesado)
     const displayEl = document.getElementById('scannedCodeDisplayDetalle');
     displayEl.innerHTML = `
-        <div class="scanned-code">
-            <strong>Código leído:</strong><br>
-            <code>${codigo}</code>
+        <div class="scanned-code" style="background-color: #d4edda; color: #155724; padding: 10px; border-radius: 4px; margin-top: 10px;">
+            <i class="bi bi-check-circle me-2"></i><strong>✅ ${codigo}</strong> agregado<br>
+            <small>Escanea otro código...</small>
         </div>
     `;
 
-    // Cerrar el escáner
-    cerrarEscanerDetalle();
-
-    // Poner el código en el input y procesar
-    document.getElementById('codigoBolson').value = codigo;
-    procesarCodigoBolson(codigo);
+    // Limpiar el input para el siguiente código
+    setTimeout(() => {
+        document.getElementById('codigoBolson').value = '';
+        // Limpiar el mensaje de confirmación después de 3 segundos
+        displayEl.innerHTML = '';
+    }, 3000);
+    
+    // El scanner sigue activo para continuar escaneando
 }
 
 /**
