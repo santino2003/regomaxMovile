@@ -682,10 +682,8 @@ function procesarCodigoEscaneadoDetalle(codigo) {
     // Verificar si el código ya está en la lista (duplicado)
     const esCodigoDuplicado = bolsonesHash[codigoEscaneado] || bolsonesEscaneados.some(b => obtenerCodigoBolson(b) === codigoEscaneado);
 
-    // Solo hacer beep si es un código nuevo (no duplicado)
-    if (!esCodigoDuplicado) {
-        beep();
-    }
+    // Siempre hacer beep (para bien o para mal)
+    beep();
 
     // Poner el código en el input
     document.getElementById('codigoBolson').value = codigo;
@@ -693,26 +691,13 @@ function procesarCodigoEscaneadoDetalle(codigo) {
     // Procesar el código (esto agregará el bolsón)
     procesarCodigoBolson(codigo);
 
-    // Mostrar confirmación temporal (el código fue procesado)
+    // Mostrar solo el número del código
     const displayEl = document.getElementById('scannedCodeDisplayDetalle');
-    
-    if (esCodigoDuplicado) {
-        // Mostrar advertencia si es duplicado
-        displayEl.innerHTML = `
-            <div class="scanned-code" style="background-color: #f8d7da; color: #721c24; padding: 10px; border-radius: 4px; margin-top: 10px;">
-                <i class="bi bi-exclamation-triangle me-2"></i><strong>⚠️ ${codigo}</strong> ya fue agregado<br>
-                <small>Escanea otro código...</small>
-            </div>
-        `;
-    } else {
-        // Mostrar confirmación verde si es nuevo
-        displayEl.innerHTML = `
-            <div class="scanned-code" style="background-color: #d4edda; color: #155724; padding: 10px; border-radius: 4px; margin-top: 10px;">
-                <i class="bi bi-check-circle me-2"></i><strong>✅ ${codigo}</strong> agregado<br>
-                <small>Escanea otro código...</small>
-            </div>
-        `;
-    }
+    displayEl.innerHTML = `
+        <div class="scanned-code" style="background-color: #d4edda; color: #155724; padding: 10px; border-radius: 4px; margin-top: 10px; text-align: center; font-weight: bold; font-size: 1.1rem;">
+            ${codigo}
+        </div>
+    `;
 
     // Limpiar el input para el siguiente código
     setTimeout(() => {
