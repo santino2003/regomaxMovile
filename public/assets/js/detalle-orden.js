@@ -77,7 +77,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Inicializar modales
-    window.errorModal = new bootstrap.Modal(document.getElementById('errorModal'));
     window.confirmarModal = new bootstrap.Modal(document.getElementById('confirmarModal'));
     window.exitoModal = new bootstrap.Modal(document.getElementById('exitoModal'));
 
