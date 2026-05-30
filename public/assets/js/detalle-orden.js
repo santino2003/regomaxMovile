@@ -255,7 +255,7 @@ function procesarCodigoBolson(codigo) {
         if (!data) return;
 
         if (!data.success) {
-            mostrarError(`Error: ${data.message || 'Error al verificar bolsón'}`);
+            mostrarError(`Error: ${data.message || 'Bolson no valido o fuera de stock'}`);
             return;
         }
 
@@ -523,11 +523,27 @@ async function confirmarDespacho() {
 }
 
 /**
- * Mostrar error
+ * Mostrar notificación de error flotante
  */
 function mostrarError(mensaje) {
-    document.getElementById('errorMessage').textContent = mensaje;
-    window.errorModal.show();
+    // Crear elemento de notificación
+    const notificacion = document.createElement('div');
+    notificacion.className = 'floating-notification';
+    notificacion.innerHTML = `
+        <i class="bi bi-exclamation-circle-fill"></i>
+        <span class="floating-notification-message">${mensaje}</span>
+    `;
+    
+    // Agregar al body
+    document.body.appendChild(notificacion);
+    
+    // Remover después de 3 segundos
+    setTimeout(() => {
+        notificacion.classList.add('fadeOut');
+        setTimeout(() => {
+            notificacion.remove();
+        }, 300); // Esperar a que termine la animación
+    }, 3000);
 }
 
 /**
