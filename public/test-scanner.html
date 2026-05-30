@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Scanner - Regomax</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <style>
+        body { background: #f0f0f0; }
+        .container { max-width: 600px; margin-top: 20px; }
+        #video { width: 100%; border-radius: 8px; background: #000; margin: 20px 0; }
+        .result { 
+            font-size: 24px; 
+            padding: 20px; 
+            background: #d4edda; 
+            border: 3px solid #28a745;
+            border-radius: 8px;
+            text-align: center;
+            margin: 20px 0;
+            display: none;
+        }
+        .result.show { display: block; animation: slideIn 0.3s; }
+        @keyframes slideIn { from { transform: translateY(-20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .status { 
+            padding: 15px; 
+            border-radius: 8px;
+            text-align: center;
+            font-weight: bold;
+        }
+        .scanning { background: #cfe2ff; color: #084298; }
+        .detected { background: #d1e7dd; color: #0f5132; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="mb-4">📱 Test Scanner QR/Códigos</h1>
+        
+        <button class="btn btn-primary btn-lg w-100 mb-3" onclick="iniciarScanner()">
+            <i class="bi bi-camera me-2"></i>Iniciar Escáner
+        </button>
+
+        <div id="scannerContainer" style="display: none;">
+            <video id="video" playsinline autoplay></video>
+            <div class="status scanning" id="status">
+                <i class="bi bi-hourglass-split me-2"></i>Buscando código...
+            </div>
+        </div>
+
+        <div class="result" id="result">
+            <div style="font-size: 48px; margin-bottom: 10px;">✅</div>
+            <div id="resultText"></div>
+            <button class="btn btn-primary mt-3" onclick="reiniciar()">Escanear de Nuevo</button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/umd/index.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+
+    <script>
+        let video = null;
+        let stream = null;
+        let interval = null;
+
+        async function iniciarScanner() {
+            try {
+                video = document.getElementById('video');
+                
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'environment' }
+                });
+
+                video.srcObject = stream;
+                video.play();
+
+                document.getElementById('scannerContainer').style.display = 'block';
+                document.getElementById('result').classList.remove('show');
+
+                escanear();
+            } catch (err) {
+                alert('Error: ' + err.message);
+            }
+        }
+
+        function escanear() {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const status = document.getElementById('status');
+            let frameCount = 0;
+
+            interval = setInterval(() => {
+                if (!video || video.readyState !== video.HAVE_ENOUGH_DATA) return;
+
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                ctx.drawImage(video, 0, 0);
+
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                
+                // Intenta QR
+                let code = jsQR(imageData.data, canvas.width, canvas.height, { inversionAttempts: 'dontInvert' });
+                let tipo = 'QR';
+
+                // Intenta Código de Barras
+                if (!code) {
+                    try {
+                        const lum = new ZXing.RGBLuminanceSource(imageData.data, canvas.width, canvas.height);
+                        const bmp = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(lum));
+                        const reader = new ZXing.MultiFormatReader();
+                        const res = reader.decode(bmp);
+                        code = { data: res.getText() };
+                        tipo = 'Código de Barras';
+                    } catch (e) {}
+                }
+
+                if (code?.data) {
+                    clearInterval(interval);
+                    detenerScanner();
+                    mostrarResultado(code.data, tipo);
+                } else {
+                    frameCount++;
+                    if (frameCount % 15 === 0) {
+                        status.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Buscando código...';
+                    }
+                }
+            }, 100);
+        }
+
+        function detenerScanner() {
+            clearInterval(interval);
+            if (stream) {
+                stream.getTracks().forEach(t => t.stop());
+            }
+            document.getElementById('scannerContainer').style.display = 'none';
+        }
+
+        function mostrarResultado(codigo, tipo) {
+            const result = document.getElementById('result');
+            const resultText = document.getElementById('resultText');
+            
+            resultText.innerHTML = `
+                <div><strong>${tipo}</strong></div>
+                <div style="font-size: 18px; word-break: break-all; margin: 10px 0;">${codigo}</div>
+            `;
+            
+            result.classList.add('show');
+
+            // Sonido
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.frequency.value = 1000;
+                gain.gain.setValueAtTime(0.3, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+                osc.start(ctx.currentTime);
+                osc.stop(ctx.currentTime + 0.2);
+            } catch (e) {}
+        }
+
+        function reiniciar() {
+            document.getElementById('result').classList.remove('show');
+            iniciarScanner();
+        }
+    </script>
+</body>
+</html>
