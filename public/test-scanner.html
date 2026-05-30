@@ -104,6 +104,9 @@
                 // Intenta Código de Barras
                 if (!code) {
                     try {
+                        // Mejora el contraste para mejor detección de barras
+                        mejorarContraste(imageData.data);
+                        
                         const lum = new ZXing.RGBLuminanceSource(imageData.data, canvas.width, canvas.height);
                         const bmp = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(lum));
                         const reader = new ZXing.MultiFormatReader();
@@ -124,6 +127,26 @@
                     }
                 }
             }, 100);
+        }
+
+        function mejorarContraste(data) {
+            // Encuentra min y max de luminancia
+            let min = 255, max = 0;
+            for (let i = 0; i < data.length; i += 4) {
+                const lum = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
+                if (lum < min) min = lum;
+                if (lum > max) max = lum;
+            }
+            
+            // Expande el rango de contraste
+            const range = max - min || 1;
+            for (let i = 0; i < data.length; i += 4) {
+                const lum = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
+                const normalized = ((lum - min) / range) * 255;
+                data[i] = normalized;
+                data[i + 1] = normalized;
+                data[i + 2] = normalized;
+            }
         }
 
         function detenerScanner() {
