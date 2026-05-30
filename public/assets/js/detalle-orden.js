@@ -226,7 +226,11 @@ function procesarCodigoBolson(codigo) {
     // Verificar duplicados en el acumulado local de la orden
     if (bolsonesHash[codigoEscaneado] || bolsonesEscaneados.some(b => obtenerCodigoBolson(b) === codigoEscaneado)) {
         mostrarError(`El bolsón ${codigoEscaneado} ya fue agregado en esta sesión`);
-        return;
+        // Limpiar el input pero NO hacer la petición al backend
+        const input = document.getElementById('codigoBolson');
+        input.value = '';
+        input.focus();
+        return; // IMPORTANTE: Retornar aquí para NO hacer la petición
     }
 
     const token = localStorage.getItem('auth_token');
@@ -538,6 +542,16 @@ function logout() {
  * Abre el modal del escáner QR/Código de barras para detalle-orden
  */
 async function abrirEscanerQRDetalle() {
+    // Limpiar cualquier instancia anterior del scanner
+    if (html5QRScanner) {
+        try {
+            await html5QRScanner.stop();
+        } catch (err) {
+            console.log('El scanner ya estaba detenido');
+        }
+        html5QRScanner = null;
+    }
+
     const modal = new bootstrap.Modal(document.getElementById('scannerModal'));
     modal.show();
 
@@ -546,6 +560,15 @@ async function abrirEscanerQRDetalle() {
         if (typeof Html5Qrcode === 'undefined') {
             throw new Error('html5-qrcode library not loaded');
         }
+
+        // Limpiar el elemento reader
+        const readerElement = document.getElementById('reader');
+        if (readerElement) {
+            readerElement.innerHTML = '';
+        }
+
+        // Esperar un poco para asegurar que el elemento está limpio
+        await new Promise(resolve => setTimeout(resolve, 300));
 
         // Inicializar el scanner
         html5QRScanner = new Html5Qrcode("reader");
@@ -697,9 +720,19 @@ function cerrarEscanerDetalle() {
     if (html5QRScanner) {
         html5QRScanner.stop().then(() => {
             html5QRScanner = null;
+            // Limpiar el elemento reader
+            const readerElement = document.getElementById('reader');
+            if (readerElement) {
+                readerElement.innerHTML = '';
+            }
         }).catch(err => {
             console.error('Error al detener el scanner:', err);
             html5QRScanner = null;
+            // Limpiar el elemento reader incluso si hay error
+            const readerElement = document.getElementById('reader');
+            if (readerElement) {
+                readerElement.innerHTML = '';
+            }
         });
     }
 
