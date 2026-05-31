@@ -61,7 +61,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             // TODO: Descomentar cuando tu API esté lista
             
-            const response = await fetch('https://deb.regomax.com/api/auth/login', {
+            const response = await fetch('https://programa.regomax.com/api/auth/login', {
                 method: 'POST',
                 credentials: 'include',
                 headers: {

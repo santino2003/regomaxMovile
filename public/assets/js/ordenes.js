@@ -48,7 +48,7 @@ async function cargarOrdenes() {
         console.log('📡 Enviando petición a API con token...');
         console.log('Token:', token.substring(0, 20) + '...');
 
-        const response = await fetch('https://deb.regomax.com/api/ordenes/estado/abierta', {
+        const response = await fetch('https://programa.regomax.com/api/ordenes/estado/abierta', {
             method: 'GET',
             credentials: 'include', // Incluye cookies si existen
             headers: headers

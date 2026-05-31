@@ -234,7 +234,7 @@ function procesarCodigoBolson(codigo) {
 
     const token = localStorage.getItem('auth_token');
 
-    fetch(`https://deb.regomax.com/api/despachos/verificar-bolson/${encodeURIComponent(codigoEscaneado)}`, {
+    fetch(`https://programa.regomax.com/api/despachos/verificar-bolson/${encodeURIComponent(codigoEscaneado)}`, {
         method: 'GET',
         headers: {
             'Content-Type': 'application/json',
@@ -470,7 +470,7 @@ async function confirmarDespacho() {
             codigos: bolsonesEscaneados.map(b => b.codigo)
         };
 
-        const response = await fetch('https://deb.regomax.com/api/despachos/nuevo', {
+        const response = await fetch('https://programa.regomax.com/api/despachos/nuevo', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
