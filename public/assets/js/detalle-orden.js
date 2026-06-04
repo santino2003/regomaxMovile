@@ -9,6 +9,7 @@ let scannerInterval = null;
 let html5QRScanner = null; // Scanner instance from html5-qrcode
 let lastScannedCode = null; // Último código escaneado
 let lastScannedTime = 0; // Timestamp del último escaneo
+let isProcesando = false; // Flag para evitar procesamiento simultáneo
 
 /**
  * Reproduce un sonido de beep cuando se detecta un código
@@ -219,31 +220,37 @@ function procesarCodigoBolson(codigo) {
         return;
     }
 
+    // BLOQUEO DE PROCESAMIENTO SIMULTÁNEO: Evitar que se procesen múltiples códigos a la vez
+    if (isProcesando) {
+        console.log('⏳ Procesamiento en curso, esperando...');
+        return;
+    }
+
     const codigoEscaneado = String(codigo).trim();
     const bolsonesHash = obtenerBolsonesHashOrden();
     const ahora = Date.now();
 
-    // CONTROL TEMPORAL INMEDIATO: Evitar duplicados en escaneos rápidos sucesivos (scanner genera múltiples eventos)
-    // Actualizar PRIMERO para bloquear eventos concurrentes del mismo código
-    if (lastScannedCode === codigoEscaneado && (ahora - lastScannedTime) < 500) {
-        console.log(`⏱️ Escaneo rechazado: ${codigoEscaneado} - Duplicado dentro de 500ms`);
-        return; // Salir silenciosamente para no molestar al usuario
+    // CONTROL TEMPORAL: Evitar duplicados del MISMO código muy rápido
+    if (lastScannedCode === codigoEscaneado && (ahora - lastScannedTime) < 800) {
+        console.log(`⏱️ Escaneo rechazado: ${codigoEscaneado} - DUPLICADO dentro de 800ms`);
+        return; // Salir silenciosamente
     }
 
-    // Marcar este código como el último escaneado INMEDIATAMENTE
-    // Esto bloquea cualquier otro evento del mismo código que llegue rápido
+    // Marcar este código como el último escaneado
     lastScannedCode = codigoEscaneado;
     lastScannedTime = ahora;
 
     // Verificar duplicados en el acumulado local de la orden
     if (bolsonesHash[codigoEscaneado] || bolsonesEscaneados.some(b => obtenerCodigoBolson(b) === codigoEscaneado)) {
         mostrarError(`El bolsón ${codigoEscaneado} ya fue agregado en esta sesión`);
-        // Limpiar el input pero NO hacer la petición al backend
         const input = document.getElementById('codigoBolson');
         input.value = '';
         input.focus();
-        return; // IMPORTANTE: Retornar aquí para NO hacer la petición
+        return;
     }
+
+    // Marcar como procesando
+    isProcesando = true;
 
     const token = localStorage.getItem('auth_token');
 
@@ -298,6 +305,11 @@ function procesarCodigoBolson(codigo) {
         mostrarError('Error de conexión al verificar el bolsón');
     })
     .finally(() => {
+        // Desbloquear procesamiento después de 1 segundo para evitar que se procese muy rápido
+        setTimeout(() => {
+            isProcesando = false;
+        }, 1000);
+
         const input = document.getElementById('codigoBolson');
         input.value = '';
         input.focus();
