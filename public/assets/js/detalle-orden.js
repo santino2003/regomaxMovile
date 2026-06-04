@@ -231,7 +231,7 @@ function procesarCodigoBolson(codigo) {
     const ahora = Date.now();
 
     // CONTROL TEMPORAL: Evitar duplicados del MISMO código muy rápido
-    if (lastScannedCode === codigoEscaneado && (ahora - lastScannedTime) < 9000) {
+    if (lastScannedCode === codigoEscaneado && (ahora - lastScannedTime) < 800) {
         console.log(`⏱️ Escaneo rechazado: ${codigoEscaneado} - DUPLICADO dentro de 800ms`);
         return; // Salir silenciosamente
     }
