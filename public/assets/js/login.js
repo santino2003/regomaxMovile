@@ -88,7 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 username: username
             }));
 
-            showSuccess(`Login exitoso como "${username}". Redirigiendo...`);
+            showSuccess(`Bienvenido "${username}". Accediendo...`);
 
             setTimeout(() => {
                 window.location.href = '/ordenes.html';
