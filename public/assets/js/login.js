@@ -1,6 +1,3 @@
-// TODO: Conectar con tu API real en 'https://programa.regomax.com/api/auth/login'
-// Por ahora, login de prueba (comentado el fetch a API).
-
 function showError(message) {
     const errorElement = document.getElementById('errorMessage');
     if (errorElement && errorElement.querySelector('span')) {
@@ -59,7 +56,6 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
 
         try {
-            // TODO: Descomentar cuando tu API esté lista
             
             const response = await fetch('https://programa.regomax.com/api/auth/login', {
                 method: 'POST',
