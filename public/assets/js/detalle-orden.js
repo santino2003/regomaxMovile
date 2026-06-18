@@ -633,7 +633,7 @@ async function abrirEscanerQRDetalle() {
                 formatsToSupport: formatsToSupport
             },
             onScanSuccessDetalle,
-            onScanErrorDetalle
+            
         );
 
         // Actualizar estado
@@ -676,13 +676,6 @@ function onScanSuccessDetalle(decodedText, decodedResult) {
     procesarCodigoBolson(decodedText);
 }
 
-/**
- * Callback para errores del escáner de detalle-orden
- */
-function onScanErrorDetalle(error) {
-    // Los errores de no detección son normales, no los mostramos
-    // Solo errores graves se mostrarían aquí
-}
 
 /**
  * Cierra el escáner y detiene la cámara en detalle-orden
